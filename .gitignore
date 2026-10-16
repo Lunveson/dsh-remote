@@ -1,0 +1,25 @@
+﻿# ---- build outputs ----
+*.class
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/captures/
+
+# ---- runtime ----
+*.pid
+*.log
+.dsh-link.pid
+proxy.log
+
+# ---- IDE / editor ----
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# ---- secrets: NEVER commit ----
+.credentials.yaml
+*credentials*
+*secret*
+.env

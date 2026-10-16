@@ -1,0 +1,32 @@
+plugins {
+	id 'com.android.application'
+}
+
+android {
+	namespace 'com.rptchat.dshremote'
+	compileSdk 36
+
+	defaultConfig {
+		applicationId 'com.rptchat.dshremote'
+		minSdk 30
+		targetSdk 36
+		versionCode 1
+		versionName 'v1'
+	}
+
+	buildTypes {
+		release {
+			minifyEnabled false
+		}
+	}
+
+	compileOptions {
+		sourceCompatibility JavaVersion.VERSION_17
+		targetCompatibility JavaVersion.VERSION_17
+	}
+}
+
+dependencies {
+	// Chrome Custom Tabs：用系统浏览器(Chrome/Edge)的内核，无地址栏打开
+	implementation 'androidx.browser:browser:1.8.0'
+}

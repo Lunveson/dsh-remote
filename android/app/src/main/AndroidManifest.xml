@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<!-- WebView 要联网（虽然是本机 127.0.0.1，但走 adb reverse，仍需 INTERNET 权限） -->
+	<uses-permission android:name="android.permission.INTERNET" />
+
+	<!--
+		★ 关键：usesCleartextTraffic="true" ★
+		Android 9+ 默认禁止明文 HTTP，不加这个，WebView 加载 http://127.0.0.1 会直接失败。
+	-->
+	<application
+		android:label="大肥鱼远程"
+		android:hardwareAccelerated="true"
+		android:usesCleartextTraffic="true"
+		android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+
+		<activity
+			android:name=".MainActivity"
+			android:exported="true"
+			android:configChanges="orientation|screenSize|keyboardHidden|screenLayout">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity>
+	</application>
+
+</manifest>

@@ -23,3 +23,11 @@ proxy.log
 *credentials*
 *secret*
 .env
+
+# ---- tools: runtime / big files ----
+tools/apk-backup/
+tools/*.log
+tools/guardian.log
+tools/autostart-error.log
+tools/.blackout.pid
+tools/*.pid

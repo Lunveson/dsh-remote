@@ -248,30 +248,51 @@ public class DshLink {
 
     // ==================== ③ 维护 adb reverse ====================
 
+    /**
+     * ③ 维护 adb reverse —— 并且★自动重连手机★
+     *
+     * 背景：电脑进 S0 现代待机时 WiFi 会省电掉线，导致无线 adb 断开。
+     * 唤醒后 adb 不会自己回来（要 kill-server 重新做 mDNS 发现），
+     * 所以这里做三级恢复：
+     *   第 1 级：adb reconnect offline          （轻，试一下）
+     *   第 2 级：kill-server + start-server     （重，重新发现设备）
+     *   第 3 级：持续等待                       （退避，别死循环刷）
+     */
     static void maintainReverse() {
         Thread t = new Thread(() -> {
             boolean lastOk = false;
+            int failCount = 0;          // 连续"看不到设备"的次数
+
             while (true) {
                 try {
-                    String devs = runAdb("devices");
-                    boolean hasDevice = devs != null && devs.replace("List of devices attached", "").contains("device");
+                    boolean hasDevice = hasRealDevice(runAdb("devices"));
+
                     if (hasDevice) {
-                        String list = runAdb("reverse", "--list");
-                        String want = "tcp:" + phonePort + " tcp:" + proxyPort;
-                        if (list == null || !list.contains(want)) {
-                            runAdb("reverse", "tcp:" + phonePort, "tcp:" + proxyPort);
-                            String after = runAdb("reverse", "--list");
-                            if (after != null && after.contains(want)) {
-                                System.out.println("[dsh-link] adb reverse 已建立: 手机 " + phonePort + " -> 本机 " + proxyPort);
-                                lastOk = true;
-                            }
-                        } else if (!lastOk) {
-                            System.out.println("[dsh-link] adb reverse 正常");
-                            lastOk = true;
+                        if (failCount > 0) {
+                            System.out.println("[dsh-link] 手机回来了");
                         }
-                    } else if (lastOk) {
-                        System.out.println("[dsh-link] 手机断开了，等重连…");
+                        failCount = 0;
+                        ensureReverse(lastOk);
+                        lastOk = true;
+                    } else {
+                        failCount++;
+                        if (lastOk || failCount == 1) {
+                            System.out.println("[dsh-link] 手机断开了，尝试重连…");
+                        }
                         lastOk = false;
+
+                        // ---- 第 1 级：让 adb 自己重连（第 2 次失败时试一次）----
+                        if (failCount == 2) {
+                            runAdb("reconnect", "offline");
+                        }
+                        // ---- 第 2 级：重启 adb server 重新发现（第 4 次起，每 3 轮一次）----
+                        else if (failCount >= 4 && (failCount - 4) % 3 == 0) {
+                            System.out.println("[dsh-link] 重启 adb server 重新发现设备…");
+                            runAdb("kill-server");
+                            Thread.sleep(1000);
+                            runAdb("start-server");
+                            Thread.sleep(4000);
+                        }
                     }
                 } catch (Exception ignored) { }
                 try { Thread.sleep(3000); } catch (InterruptedException e) { return; }
@@ -279,6 +300,35 @@ public class DshLink {
         });
         t.setDaemon(true);
         t.start();
+    }
+
+    /** 判断 adb devices 输出里是否有【真正可用】的设备（排除 offline / unauthorized / 空行）。 */
+    static boolean hasRealDevice(String devs) {
+        if (devs == null) return false;
+        for (String ln : devs.split("\n")) {
+            String s = ln.trim();
+            if (s.isEmpty()) continue;
+            if (s.startsWith("List of devices")) continue;
+            if (s.startsWith("*")) continue;            // daemon 启动信息
+            String[] parts = s.split("\\s+");
+            if (parts.length >= 2 && parts[1].equals("device")) return true;
+        }
+        return false;
+    }
+
+    /** 确保 adb reverse 存在（缺失就重建）。 */
+    static void ensureReverse(boolean lastOk) {
+        String want = "tcp:" + phonePort + " tcp:" + proxyPort;
+        String list = runAdb("reverse", "--list");
+        if (list == null || !list.contains(want)) {
+            runAdb("reverse", "tcp:" + phonePort, "tcp:" + proxyPort);
+            String after = runAdb("reverse", "--list");
+            if (after != null && after.contains(want)) {
+                System.out.println("[dsh-link] adb reverse 已建立: 手机 " + phonePort + " -> 本机 " + proxyPort);
+            }
+        } else if (!lastOk) {
+            System.out.println("[dsh-link] adb reverse 正常");
+        }
     }
 
     static String runAdb(String... args) {

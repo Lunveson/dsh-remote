@@ -133,7 +133,7 @@ public class MainActivity extends Activity {
         errorView.setPadding(dp(32), dp(32), dp(32), dp(32));
 
         TextView title = new TextView(this);
-        title.setText("连不上电脑");
+        title.setText("大肥鱼远程 · v2");
         title.setTextColor(0xFFFFE08A);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         title.setGravity(Gravity.CENTER);
@@ -145,10 +145,11 @@ public class MainActivity extends Activity {
         errMsg.setGravity(Gravity.CENTER);
         errMsg.setPadding(0, dp(16), 0, dp(24));
         errMsg.setText("检查这几件事：\n\n"
-                + "1. 电脑上双击了 启动-静默.vbs 吗？\n"
-                + "   （dsh-link 要在跑）\n\n"
-                + "2. 手机和电脑的 adb 连着吗？\n"
-                + "   （无线调试 / USB）\n\n"
+                + "1. 电脑上的 dsh-link 在跑吗？\n"
+                + "   （正常会自动启动；\n"
+                + "    也可以双击 tools\\dsh-link-autostart.bat）\n\n"
+                + "2. 手机的【无线调试】开着吗？\n"
+                + "   （adb 需要连上手机）\n\n"
                 + "3. 电脑上的 dsh 开着吗？\n\n"
                 + "地址：" + DEFAULT_URL);
         errorView.addView(errMsg);

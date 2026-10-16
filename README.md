@@ -121,6 +121,26 @@
 本项目**没有参考它们**，是从 dsh 官方源码 + 第一原理推出来的 ——
 所以路线和细节都不太一样（比如用 adb 通道而不是网络、用 polyfill 而不是升级 WebView）。
 
+**提交前又专门检索了一遍**，找到两个高度重合的项目：
+
+- **[pocket-desk-agent / PDAgent](https://github.com/techgniouss/pdagent)** ——
+  已经做了"手机遥控电脑 + 隐私屏 + 开机自启 + 从手机触发构建 Android APK 并取回"，
+  比我们成熟得多。
+- **[sinonchum/android-autonomous-dev-agent](https://github.com/sinonchum/android-autonomous-dev-agent)** ——
+  做了"改代码 → 装真机 → 冷启动 → 查 logcat → 截图验证"的自主交付循环。
+
+**所以**：这些能力我们**不是**首创者，成熟度也差得远。
+
+**我们目前没找到完全相同做法的**（注意用词：**没找到**，不是"没人做过"）：
+
+```
+① 装完自检 + ★失败自动回滚★（自动装回上一个可用版本并重启）
+② 网页兜底（App 崩了/回滚失败时，浏览器走同一条 adb 通道照样能用）
+③ 全程不经网络（只靠 adb reverse：不组网、不穿透、不开端口）
+```
+
+完整的对比、引用和检索过程见 **[docs/RELATED-WORK.md](docs/RELATED-WORK.md)**。
+
 **教训**：自己推出来 ≠ 没人做过。世界上聪明人很多，
 很多"我觉得只有我会想到"的办法，别人可能早就想到了。
 先查全生态，再谈"有没有人做过"。

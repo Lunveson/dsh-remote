@@ -1,34 +1,81 @@
 # dsh-remote
 
-**用手机访问电脑上的 [DeepSeek Harness](https://github.com/deepseek-ai)（dsh）。**
-
-不用 Todesk、不用插 USB 线、不怕 WiFi 隔离、不怕防火墙。
-
-> DSH 桌面版（2026-09-25 预览上线）只监听 `127.0.0.1`，只能在本机用。
-> 本项目让你**从手机上**访问它 —— 走 adb 通道，绕过防火墙和网络隔离。
+**从手机上访问电脑上的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）—— 走 adb 通道，不经过网络。**
 
 ---
 
-## 它做了什么
+## ★ 先说清楚：这不是第一个，也不是唯一 ★
+
+"用手机访问 dsh"已经有相当多方案了。本项目的价值**不在"首创"**，而在于**换了一条技术路线**（不经过网络）。
+
+### 生态对比（按 star 排序，仅列公开可见的部分）
+
+| 项目 | 路线 | 走网络？ | 特点 |
+|---|---|---|---|
+| [shaobeichen/dsh-pocket](https://github.com/shaobeichen/dsh-pocket) ⭐1792 | dsh web + 手机扫码 | ✅ 局域网/公网 | 成熟度最高，有 npm 包 |
+| [DSH-APP/DSHA](https://github.com/DSH-APP/DSHA) ⭐1384 | 手机里跑 dsh（PRoot + Ubuntu） | — | 把 dsh 装进手机本身 |
+| [ningbainb/deepseek-harness-desktop](https://github.com/ningbainb/deepseek-harness-desktop) ⭐822 | 桌面客户端 + 移动远程 | ✅ | 一体化桌面方案 |
+| [Clarklevis1995/dsh-mobile](https://github.com/Clarklevis1995/dsh-mobile) ⭐523 | 原生 iOS 客户端 + WebSocket | ✅ | iOS 原生体验 |
+| [saya-ch/dsh-mobile](https://github.com/saya-ch/dsh-mobile) ⭐479 | Android App + 远程访问插件 | ✅ | 插件化 |
+| [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote) ⭐344 | P2P 优先 + 端到端加密 | ✅ | 多端、加密 |
+| [SCSpotato/dsh-remote](https://github.com/SCSpotato/dsh-remote) ⭐98 | Tailscale + Caddy HTTPS 反代 | ✅ | 与我们同名，走网络 |
+| **本项目** | **adb reverse + cookie 代理 + polyfill** | **❌ 不经过网络** | 见下 |
+
+（以上只是搜索到的公开仓库，排序和 star 数会变化；如果漏了你的项目，欢迎补充。）
+
+### 本项目的三个差异点
+
+```
+① 走 adb 通道（adb reverse）
+   手机 → 127.0.0.1 → adb → 电脑本地端口
+   · 不用组网、不用内网穿透、不开任何入站端口
+   · 不怕 WiFi"设备隔离"（校园网/公司网常见）
+   · adb 是"已建立的出站连接"，防火墙拦不住
+
+② 逆向 cookie 认证
+   dsh web 用"一次性 launch token + 签名 cookie"认证，
+   正常做法是拿 dsh 打印的带 token URL 去换 cookie。
+   本项目直接读本机 secret 自己签名 cookie 注入请求 ——
+   免去了"扫码/复制带 token 的 URL"这一步。
+
+③ WebView polyfill
+   旧手机的系统 WebView（如 103）缺 Promise.withResolvers / AbortSignal.any，
+   dsh 前端会直接崩。本项目拦截 HTML 在 <head> 注入补丁，把它救活。
+```
+
+### 什么时候该用这个项目 / 什么时候不该
+
+| 场景 | 建议 |
+|---|---|
+| 手机和电脑在一处，只想自己用 | ✅ 本项目（最省事，连网络都不用配） |
+| 网络被隔离，连不上电脑 | ✅ 本项目（走 adb，不走网络） |
+| 不想开端口 / 不想组网 / 不想装 Tailscale | ✅ 本项目 |
+| 想在外面（公网）连家里的电脑 | ❌ 用 [dsh-pocket](https://github.com/shaobeichen/dsh-pocket) 或 [ds-harness-remote](https://github.com/liguobao/ds-harness-remote) |
+| 想完全不依赖电脑，手机里跑 dsh | ❌ 用 [DSHA](https://github.com/DSH-APP/DSHA) 或 [DSHBox](https://github.com/WSK-build/DSHBox) |
+| 想要原生 App 的完整体验 | ❌ 用 [dsh-mobile](https://github.com/Clarklevis1995/dsh-mobile) 系列 |
+
+---
+
+## 它怎么工作
 
 ```
 【手机】浏览器 或 App
    ↓  http://127.0.0.1:19387   （手机本地地址）
    ↓  adb reverse：手机的 19387 → 电脑的 23554
 【电脑】dsh-link 代理
-   ↓  读取本地 secret，自动签名并注入认证 cookie
+   ↓  读取本机 secret，自动签名并注入认证 cookie
 【电脑】dsh GUI（127.0.0.1:19387）
    ↓
 和电脑上一模一样的界面
 ```
 
-三件事各自解决一个硬问题：
+三件事各自解决一个具体问题：
 
 | 问题 | 解法 |
 |---|---|
-| 电脑的 GUI 只监听 127.0.0.1，外部进不来 | **adb reverse** 把手机端口转到电脑（adb 是出站连接，防火墙拦不住） |
-| dsh 用一次性 token + 签名 cookie 认证 | **代理读取本地 secret，自己签名 cookie** 注入每个请求 |
-| 旧手机 WebView 缺新 JS API，前端崩溃 | **App 拦截 HTML，在 `<head>` 注入 polyfill** |
+| 电脑的 GUI 只监听 127.0.0.1，外部进不来 | **adb reverse** 把手机端口转到电脑 |
+| dsh 用一次性 token + 签名 cookie 认证 | **代理读取本机 secret 自己签名** cookie |
+| 旧手机 WebView 缺新 JS API，前端崩溃 | **App 拦截 HTML 注入 polyfill** |
 
 ---
 
@@ -60,7 +107,7 @@ dsh-remote/
 
 ```
 ① 电脑装了 dsh（DeepSeek Harness），能正常打开
-② 电脑有 Java 17+（脚本会自动找）
+② 电脑有 Java 17+（脚本会自动找：JAVA_HOME → PATH → 常见安装位置）
 ③ 有 adb（Android SDK platform-tools）
 ④ 手机通过【无线调试】或 USB 连上电脑（adb devices 能看到它）
 ```
@@ -74,7 +121,7 @@ dsh-remote/
 
 它会自动：
 - 找 java / adb
-- 编译 `DshLink.java`（首次）
+- 编译 `DshLink.java`（首次运行）
 - 起代理（`127.0.0.1:23554`）
 - **每 3 秒检查一次 `adb reverse`，断了自动重做**
 
@@ -109,8 +156,6 @@ http://127.0.0.1:19387
 3. 电脑：adb pair <热点IP:配对端口> <6位配对码>
 4. 电脑：adb connect <热点IP:连接端口>
 ```
-
-详见 `docs/wireless-debug.md`。
 
 ---
 
@@ -150,7 +195,7 @@ http://127.0.0.1:19387
 ```
 · dsh 本身是 DeepSeek 的项目（MIT 许可证），本项目只是它的一个"外部接入层"
 · 代理做的是【本机访问本机】：读本机 ~/.dsh/.credentials.yaml 的 secret，
-  为访问本机 dsh 的请求签名 —— 不涉及任何远程凭证
+  为访问本机 dsh 的请求签名 —— 不涉及任何远程凭证、不联网
 · 请只在自己拥有/授权的机器上使用
 · 本项目不包含、也不分发 dsh 自身的任何代码
 ```

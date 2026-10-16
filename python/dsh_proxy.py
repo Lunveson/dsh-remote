@@ -154,7 +154,7 @@ def handle(client, tip, tport, secret):
                     origin = ln.split(":", 1)[1].strip()
                 elif low.startswith("upgrade:"):
                     upgrade = ln.split(":", 1)[1].strip()
-            with open(r"D:\DSH工作区\大肥鱼游戏\tools\proxy.log", "a", encoding="utf-8") as lf:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "proxy.log"), "a", encoding="utf-8") as lf:
                 lf.write(f"{time.strftime('%H:%M:%S')} {first_line} | Host={host} Origin={origin} Upgrade={upgrade}\n")
         except Exception:
             pass
